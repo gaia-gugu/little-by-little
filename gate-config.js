@@ -1,0 +1,1 @@
+export default {"configured":true,"version":1,"iterations":210000,"salt":"f6848739ed429c4de843cc838caf591c","generation":"bea6716061615ebff1c238dcdebfc7a3","verifier":"50bb4902b6a8c4cd8b7fd5c5de179968af6820b9f4243a37fbb960cff0853188"};
