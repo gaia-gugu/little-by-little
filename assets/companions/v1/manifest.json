@@ -1,0 +1,161 @@
+{
+  "creatures": [
+    {
+      "id": "dragon",
+      "label": "Dragon",
+      "src": "assets/companions/v1/creatures/dragon.webp",
+      "badge": {
+        "x": 50.02,
+        "y": 59.14,
+        "width": 13
+      }
+    },
+    {
+      "id": "moonbunny",
+      "label": "Moon Bunny",
+      "src": "assets/companions/v1/creatures/moonbunny.webp",
+      "badge": {
+        "x": 50.0,
+        "y": 63.53,
+        "width": 12
+      }
+    },
+    {
+      "id": "griffin",
+      "label": "Griffin",
+      "src": "assets/companions/v1/creatures/griffin.webp",
+      "badge": {
+        "x": 49.96,
+        "y": 58.69,
+        "width": 12
+      }
+    },
+    {
+      "id": "seadragon",
+      "label": "Sea Dragon",
+      "src": "assets/companions/v1/creatures/seadragon.webp",
+      "badge": {
+        "x": 50.06,
+        "y": 60.08,
+        "width": 12
+      }
+    },
+    {
+      "id": "unicorn",
+      "label": "Unicorn",
+      "src": "assets/companions/v1/creatures/unicorn.webp",
+      "badge": {
+        "x": 50.02,
+        "y": 64.52,
+        "width": 12
+      }
+    },
+    {
+      "id": "forestcreature",
+      "label": "Forest Creature",
+      "src": "assets/companions/v1/creatures/forestcreature.webp",
+      "badge": {
+        "x": 50.02,
+        "y": 64.4,
+        "width": 12
+      }
+    }
+  ],
+  "badges": [
+    {
+      "id": "star",
+      "label": "Star",
+      "src": "assets/companions/v1/badges/star.webp"
+    },
+    {
+      "id": "moon",
+      "label": "Moon",
+      "src": "assets/companions/v1/badges/moon.webp"
+    },
+    {
+      "id": "heart",
+      "label": "Heart",
+      "src": "assets/companions/v1/badges/heart.webp"
+    },
+    {
+      "id": "rainbow",
+      "label": "Rainbow",
+      "src": "assets/companions/v1/badges/rainbow.webp"
+    },
+    {
+      "id": "flower",
+      "label": "Flower",
+      "src": "assets/companions/v1/badges/flower.webp"
+    },
+    {
+      "id": "planet",
+      "label": "Planet",
+      "src": "assets/companions/v1/badges/planet.webp"
+    }
+  ],
+  "backgrounds": [
+    {
+      "id": "starrysky",
+      "label": "Starry Sky",
+      "src": "assets/companions/v1/backgrounds/starrysky.webp"
+    },
+    {
+      "id": "cloudgarden",
+      "label": "Cloud Garden",
+      "src": "assets/companions/v1/backgrounds/cloudgarden.webp"
+    },
+    {
+      "id": "mushroommeadow",
+      "label": "Mushroom Meadow",
+      "src": "assets/companions/v1/backgrounds/mushroommeadow.webp"
+    },
+    {
+      "id": "moonlitlake",
+      "label": "Moonlit Lake",
+      "src": "assets/companions/v1/backgrounds/moonlitlake.webp"
+    },
+    {
+      "id": "cosylibrary",
+      "label": "Cosy Library",
+      "src": "assets/companions/v1/backgrounds/cosylibrary.webp"
+    },
+    {
+      "id": "candyhills",
+      "label": "Candy Hills",
+      "src": "assets/companions/v1/backgrounds/candyhills.webp"
+    }
+  ],
+  "decorations": [
+    {
+      "id": "castle",
+      "label": "Castle",
+      "src": "assets/companions/v1/decorations/castle.webp"
+    },
+    {
+      "id": "crystals",
+      "label": "Crystals",
+      "src": "assets/companions/v1/decorations/crystals.webp"
+    },
+    {
+      "id": "magicbook",
+      "label": "Magic Book",
+      "src": "assets/companions/v1/decorations/magicbook.webp"
+    },
+    {
+      "id": "flowerpot",
+      "label": "Flower Pot",
+      "src": "assets/companions/v1/decorations/flowerpot.webp"
+    },
+    {
+      "id": "lantern",
+      "label": "Lantern",
+      "src": "assets/companions/v1/decorations/lantern.webp"
+    },
+    {
+      "id": "treasurechest",
+      "label": "Treasure Chest",
+      "src": "assets/companions/v1/decorations/treasurechest.webp"
+    }
+  ],
+  "missingDecorations": []
+}

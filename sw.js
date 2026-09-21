@@ -1,12 +1,35 @@
 // Bump this version whenever any app-shell asset changes.
 const PREFIX='little-by-little:'+self.registration.scope+':';
 const GATE_GENERATION='bea6716061615ebff1c238dcdebfc7a3';
-const CACHE=PREFIX+'v12:'+GATE_GENERATION;
+const CACHE=PREFIX+'v13:'+GATE_GENERATION;
 const AUDIO_CACHE=PREFIX+'audio-v2';
-const ASSETS=['./','./index.html','./styles.css','./app.js','./bootstrap.js','./gate.js','./gate-config.js','./core.js','./storage.js','./challenge.js','./challenge-ui.js','./challenge-storage.js','./challenge-dashboard.js','./audio-player.js','./audio-timings.js','./audio-ui.js','./audio-offline.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
+const ASSETS=['./','./index.html','./styles.css','./app.js','./bootstrap.js','./gate.js','./gate-config.js','./core.js','./storage.js','./challenge.js','./challenge-ui.js','./challenge-storage.js','./challenge-dashboard.js','./audio-player.js','./audio-timings.js','./audio-ui.js','./audio-offline.js','./rewards.js','./companion-catalog.js','./companion-ui.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
+const COMPANIONS_SCOPE=new URL('./assets/companions/v1/',self.registration.scope).href;
 self.addEventListener('install',event=>{
   // Atomic precache. Do not skipWaiting: an open round keeps its current version.
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})))));
+  event.waitUntil((async()=>{
+    const manifestUrl=new URL('./assets/companions/v1/manifest.json',self.registration.scope);
+    const response=await fetch(new Request(manifestUrl,{cache:'reload'}));
+    if(!response.ok)throw new Error('Companion manifest unavailable');
+    const manifest=await response.json();
+    const urls=new Set(ASSETS.map(path=>new URL(path,self.registration.scope).href));
+    urls.add(manifestUrl.href);
+    let artCount=0;
+    for(const group of ['creatures','badges','backgrounds','decorations']){
+      if(!Array.isArray(manifest[group]))throw new Error('Invalid companion manifest');
+      for(const item of manifest[group]){
+        if(!item||typeof item.src!=='string')throw new Error('Invalid companion path');
+        const url=new URL(item.src,self.registration.scope);
+        if(!url.href.startsWith(COMPANIONS_SCOPE)||url.search||url.hash)throw new Error('Out-of-scope companion path');
+        if(++artCount>200)throw new Error('Too many companion assets');
+        urls.add(url.href);
+      }
+    }
+    if(!manifest.creatures.length)throw new Error('Missing companion creatures');
+    // One atomic batch: incomplete new artwork must not replace a working offline release.
+    const cache=await caches.open(CACHE);
+    await cache.addAll([...urls].map(u=>new Request(u,{cache:'reload'})));
+  })());
 });
 self.addEventListener('activate',event=>{
   event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(PREFIX)&&k!==CACHE&&k!==AUDIO_CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
@@ -31,6 +54,7 @@ self.addEventListener('fetch',event=>{
     }));return;
   }
   const shell=new Set(ASSETS.map(path=>new URL(path,self.registration.scope).href));
-  if(!shell.has(url.origin+url.pathname))return;
-  event.respondWith(caches.open(CACHE).then(async cache=>(await cache.match(url.origin+url.pathname))||fetch(event.request)));
+  const path=url.origin+url.pathname;
+  if(!shell.has(path)&&!path.startsWith(COMPANIONS_SCOPE))return;
+  event.respondWith(caches.open(CACHE).then(async cache=>(await cache.match(path))||fetch(event.request)));
 });

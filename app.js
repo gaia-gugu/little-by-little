@@ -4,6 +4,9 @@ import {startChallenge,beginAnswering,submitChallenge,nextChallenge,interruptCha
 import {challengeViews,challengeHistory,seconds} from './challenge-ui.js';
 import {createAudioUI} from './audio-ui.js';
 import {bestBoard,bestDetail} from './challenge-dashboard.js';
+import {ITEM_CATEGORIES,claimCreature,claimItem,selectCompanion,syncRewards,mergeLegacyRewards,creditCompletionDay} from './rewards.js';
+import {loadCatalog} from './companion-catalog.js';
+import {companionHomeStatus,companionScreen} from './companion-ui.js';
 const $=s=>document.querySelector(s);
 let disk;try{disk=localStorage;}catch{disk={getItem(){throw Error();},setItem(){throw Error();}};}
 const THEME_KEY='little-by-little-theme-v1';
@@ -19,6 +22,18 @@ const store=openStore(disk);
 let state=store.state??createState(),view=state.round?(state.round.phase==='results'?'results':'practice'):'home';
 let blocked=store.corrupt;
 let challengeTable=state.guided.tables.at(-1),bestTable=1,suspended=false;
+let companionCatalog=null,companionCatalogError='',companionTab='creatures';
+function refreshCompanionUI() {
+ // Surgical, targeted update only — never a full render() here. The catalog resolves on its own async schedule and
+ // must not be able to interrupt unrelated clicks/focus elsewhere on the page (e.g. mid bottom-nav navigation).
+ if(view==='home') {const el=$('.companion-status');if(el)el.outerHTML=companionHomeStatus(state,companionCatalog,button);}
+ else if(view==='companions') {const el=$('.companions-page');if(el)el.outerHTML=companionScreen(state,companionCatalog,companionCatalogError,companionTab,button,heading,{masteredFactCount:masteredCount()});}
+}
+async function loadCompanions() {
+ const result=await loadCatalog(window.fetch.bind(window));
+ companionCatalog=result.ok?result.catalog:null;companionCatalogError=result.ok?'':result.error;
+ refreshCompanionUI();
+}
 const clock=createClock();
 const clockVisible=()=>!blocked&&!document.hidden&&!suspended&&view==='practice';
 function syncClock(){clock.sync(state.round,clockVisible());}
@@ -29,6 +44,7 @@ warning(store.warning);
 function save() {
   syncClock();
   if(blocked)return false;
+  syncRewards(state,masteredCount());
   const result=store.save(state);warning(result.warning);$('#save-status').textContent=result.ok?'Saved on this device':'Not saved · export a backup';return result.ok;
 }
 const button=(text,action,cls='secondary',extra='')=>`<button class="${cls}" data-action="${action}" ${extra}>${text}</button>`;
@@ -39,7 +55,7 @@ function progressBar() {const n=masteredCount();return `<div class="mastery-labe
 function heading(kicker,title,copy='') {return `<p class="eyebrow">${kicker}</p><h1>${title}</h1>${copy?`<p class="intro">${copy}</p>`:''}`;}
 function home() {
  const active=state.round&&state.round.phase!=='results';
- return `<section class="home-layout"><div class="home-main">${heading('SMALL STEPS. STRONG FOUNDATIONS.','A little practice.<br>A lot of possibility.','Ten questions. Time to think. A chance to try again.')}<div class="start-block">${button(active?(state.round.mode==='challenge'?'Resume challenge':'Resume practice'):'Start practice','start','primary large')}<span class="muted">No clock. No rush.</span></div><div class="current"><span class="eyebrow">${state.mode==='guided'?'YOUR GUIDED TABLES':'YOUR CHOSEN TABLES'}</span><div class="table-chips">${(state.mode==='guided'?state.guided.tables:state.selection).map(t=>`<span>${t}</span>`).join('')}</div></div></div><aside class="home-aside"><div class="learning-note"><p>Confidence grows<br><strong>little by little.</strong></p></div>${progressBar()}<p class="small muted">Mastery means remembering across different days—not getting it right just once.</p></aside></section><nav class="home-nav" aria-label="Learning">${button('Learn tables (Cantonese)','learn','nav-button')}${button('Time challenge','challenge','nav-button')}${button('Choose tables <span aria-hidden="true">↗</span>','choose','nav-button')}${button('Progress <span aria-hidden="true">↗</span>','progress','nav-button')}</nav>${themePicker()}`;
+ return `<section class="home-layout"><div class="home-main">${heading('SMALL STEPS. STRONG FOUNDATIONS.','A little practice.<br>A lot of possibility.','Ten questions. Time to think. A chance to try again.')}<div class="start-block">${button(active?(state.round.mode==='challenge'?'Resume challenge':'Resume practice'):'Start practice','start','primary large')}<span class="muted">No clock. No rush.</span></div><div class="current"><span class="eyebrow">${state.mode==='guided'?'YOUR GUIDED TABLES':'YOUR CHOSEN TABLES'}</span><div class="table-chips">${(state.mode==='guided'?state.guided.tables:state.selection).map(t=>`<span>${t}</span>`).join('')}</div></div></div><aside class="home-aside"><div class="learning-note"><p>Confidence grows<br><strong>little by little.</strong></p></div>${progressBar()}<p class="small muted">Mastery means remembering across different days—not getting it right just once.</p></aside></section><nav class="home-nav" aria-label="Learning">${button('Learn tables (Cantonese)','learn','nav-button')}${button('Time challenge','challenge','nav-button')}${button('Choose tables <span aria-hidden="true">↗</span>','choose','nav-button')}${button('Progress <span aria-hidden="true">↗</span>','progress','nav-button')}</nav>${companionHomeStatus(state,companionCatalog,button)}${themePicker()}`;
 }
 function practice() {
  const r=state.round,q=r.queue[r.index],done=r.phase==='feedback',timed=r.mode==='challenge',total=timed?12:10;
@@ -63,7 +79,7 @@ const statuses={unseen:['·','Not yet tried'],learning:['◐','Learning'],needs:
 function backupControls() {return `<section class="backup"><h2>Keep a copy of your progress</h2><p class="small muted">Your learning lives only in this browser, on this device. There are no accounts, automatic cloud backups or syncing. Clearing browser data can erase it. Export a file and keep it somewhere safe.</p><div class="actions">${button('Export backup','export')}<label class="file-button" for="restore-file">Restore backup<input id="restore-file" type="file" accept=".json,application/json"></label></div><p class="small muted">Restoring replaces this device’s progress. We’ll ask before changing anything.</p><p id="backup-message" role="status"></p></section>`;}
 function progress() {
  const trouble=Object.entries(state.facts).filter(([,f])=>mastery(f).status==='needs').sort((a,b)=>b[1].history.filter(e=>!e.correct).length-a[1].history.filter(e=>!e.correct).length);
- return `<section class="progress-page">${button('← Home','home','text-button')}${heading('YOUR PROGRESS','See your remembering grow.','Each square is one fact. Tap to see its story.')}${progressBar()}<p class="small muted">A fact is mastered after correct first tries on 3 different local calendar days. There is no minimum time span. A mistake starts a new sequence. Retries and repeats don’t count toward mastery.</p><div class="legend">${Object.entries(statuses).map(([k,[symbol,label]])=>`<span><b class="${k}">${symbol}</b> ${label}</span>`).join('')}</div><p class="small muted">Scroll the grid sideways on a small screen. Rows are tables; columns are multipliers. 2 × 3 and 3 × 2 are tracked separately.</p><div class="grid-scroll" tabindex="0" role="region" aria-label="Multiplication fact progress, horizontally scrollable"><table class="fact-grid"><caption class="sr-only">All 144 multiplication facts</caption><thead><tr><th scope="col">×</th>${ALL.map(t=>`<th scope="col">${t}</th>`).join('')}</tr></thead><tbody>${ALL.map(a=>`<tr><th scope="row">${a}</th>${ALL.map(b=>{const key=`${a}x${b}`,status=mastery(state.facts[key]).status;return `<td>${button(statuses[status][0],`fact:${key}`,`fact ${status}`,`data-fact="${key}" aria-label="${a} times ${b}: ${statuses[status][1]}"`)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div><section class="trouble"><h2>A little extra attention</h2>${trouble.length?`<div class="trouble-list">${trouble.map(([key])=>button(equation(key),`fact:${key}`)).join('')}</div>`:'<p class="muted">No tricky facts yet. When one needs practice, you’ll find it here.</p>'}</section><section class="recent-rounds"><h2>Recent rounds</h2><p class="small muted">Latest 10 rounds. First-try scores only; all history stays in your backup.</p><ol class="history-list">${state.results.slice(-10).reverse().map(r=>`<li><time>${r.day}</time><strong>${r.score} / 10</strong> · ${r.mode==='guided'?'Guided':'Chosen tables'}${r.added?` · Unlocked ${r.added}`:''}</li>`).join('')||'<li>No rounds completed yet.</li>'}</ol></section>${challengeHistory(state)}${backupControls()}</section>`;
+ return `<section class="progress-page">${button('← Home','home','text-button')}${heading('YOUR PROGRESS','See your remembering grow.','Each square is one fact. Tap to see its story.')}${progressBar()}${button('My creatures','companions','text-button')}<p class="small muted">A fact is mastered after correct first tries on 3 different local calendar days. There is no minimum time span. A mistake starts a new sequence. Retries and repeats don’t count toward mastery.</p><div class="legend">${Object.entries(statuses).map(([k,[symbol,label]])=>`<span><b class="${k}">${symbol}</b> ${label}</span>`).join('')}</div><p class="small muted">Scroll the grid sideways on a small screen. Rows are tables; columns are multipliers. 2 × 3 and 3 × 2 are tracked separately.</p><div class="grid-scroll" tabindex="0" role="region" aria-label="Multiplication fact progress, horizontally scrollable"><table class="fact-grid"><caption class="sr-only">All 144 multiplication facts</caption><thead><tr><th scope="col">×</th>${ALL.map(t=>`<th scope="col">${t}</th>`).join('')}</tr></thead><tbody>${ALL.map(a=>`<tr><th scope="row">${a}</th>${ALL.map(b=>{const key=`${a}x${b}`,status=mastery(state.facts[key]).status;return `<td>${button(statuses[status][0],`fact:${key}`,`fact ${status}`,`data-fact="${key}" aria-label="${a} times ${b}: ${statuses[status][1]}"`)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div><section class="trouble"><h2>A little extra attention</h2>${trouble.length?`<div class="trouble-list">${trouble.map(([key])=>button(equation(key),`fact:${key}`)).join('')}</div>`:'<p class="muted">No tricky facts yet. When one needs practice, you’ll find it here.</p>'}</section><section class="recent-rounds"><h2>Recent rounds</h2><p class="small muted">Latest 10 rounds. First-try scores only; all history stays in your backup.</p><ol class="history-list">${state.results.slice(-10).reverse().map(r=>`<li><time>${r.day}</time><strong>${r.score} / 10</strong> · ${r.mode==='guided'?'Guided':'Chosen tables'}${r.added?` · Unlocked ${r.added}`:''}</li>`).join('')||'<li>No rounds completed yet.</li>'}</ol></section>${challengeHistory(state)}${backupControls()}</section>`;
 }
 let pendingRestore=null,dialogOpener=null;
 function closeDialog() {const d=$('dialog');d?.close();d?.remove();pendingRestore=null;dialogOpener?.focus({preventScroll:true});}
@@ -89,12 +105,22 @@ function history(key) {
 function download(text,name) {const url=URL.createObjectURL(new Blob([text],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
 async function restore(file) {
  if(!file)return;
- try {if(file.size>10_000_000)throw Error('This backup is too large. Nothing was changed.');const candidate=parseBackup(await file.text());pendingRestore=candidate;dialog(`<h2 id="dialog-title">Replace this device’s progress?</h2><p>This will overwrite all current fact history, guided progress and any paused round with the selected backup. Export your current progress first if you want to keep it.</p><div class="actions">${button('Cancel','close')}${button('Replace progress','restore-confirm','primary')}</div>`);}
+ try {
+  if(file.size>10_000_000)throw Error('This backup is too large. Nothing was changed.');
+  const text=await file.text();const candidate=parseBackup(text);
+  // A pre-rewards (v1/v2) import has no opinion on companions: keep this device's earned rewards and only fold in the imported backup's own genuine historical credits, never regressing or double-dipping.
+  let rawVersion=null;try{rawVersion=JSON.parse(text)?.version;}catch{}
+  if(rawVersion!==null&&rawVersion<3&&state.rewards)candidate.rewards=mergeLegacyRewards(state.rewards,candidate.rewards);
+  pendingRestore=candidate;dialog(`<h2 id="dialog-title">Replace this device’s progress?</h2><p>This will overwrite all current fact history, guided progress and any paused round with the selected backup. Export your current progress first if you want to keep it.</p><div class="actions">${button('Cancel','close')}${button('Replace progress','restore-confirm','primary')}</div>`);
+ }
  catch(e){$('#backup-message').textContent=e.message;}
  finally {$('#restore-file').value='';}
 }
 function advance() {
- syncClock();if(state.round.mode==='challenge')nextChallenge(state);else next(state);view=state.round.phase==='results'?'results':'practice';save();render(true);
+ syncClock();if(state.round.mode==='challenge')nextChallenge(state);else next(state);
+ // Credit the ledger with the real moment of completion (today), never the round's stored start day.
+ if(state.round.phase==='results')creditCompletionDay(state.rewards,localDay());
+ view=state.round.phase==='results'?'results':'practice';save();render(true);
 }
 let successTimer=null,countdownTimer=null;
 function scheduleCountdown(){
@@ -128,12 +154,12 @@ function renderNavigation() {
   nav.className='bottom-nav';nav.setAttribute('aria-label','Main navigation');
   document.body.append(nav);
  }
- const active=view==='home'?'home':view==='learn'?'learn':view==='progress'?'progress':['challenge','bests','best-detail'].includes(view)||(['practice','results'].includes(view)&&state.round?.mode==='challenge')?'challenge':'choose';
+ const active=view==='home'?'home':view==='learn'?'learn':view==='progress'?'progress':view==='companions'?'':['challenge','bests','best-detail'].includes(view)||(['practice','results'].includes(view)&&state.round?.mode==='challenge')?'challenge':'choose';
  $('.bottom-nav').innerHTML=[['home','Home'],['choose','Practice'],['challenge','Challenge'],['learn','Listen'],['progress','Progress']].map(([route,label])=>`<a href="#${route}" data-route="${route}"${active===route?' aria-current="page"':''}>${label}</a>`).join('');
 }
 function render(focus=false) {
  renderNavigation();
- $('#main').innerHTML=blocked?`<section class="recovery">${heading('SAVED DATA PROBLEM','Your saved progress needs attention.','We could not read the saved data. It has not been erased or overwritten. Download it for safekeeping, restore a valid backup, or explicitly start fresh.')}<div class="actions">${button('Download damaged data','damaged')}${button('Start fresh','reset')}</div>${backupControls()}</section>`:view==='bests'?bestBoard(state,button):view==='best-detail'?bestDetail(state,bestTable,button):view==='learn'?audioUI.html():view==='progress'?progress():view==='practice'?practice():view==='results'?results():view==='choose'?choose():view==='challenge'?challengeUI().choose():home();
+ $('#main').innerHTML=blocked?`<section class="recovery">${heading('SAVED DATA PROBLEM','Your saved progress needs attention.','We could not read the saved data. It has not been erased or overwritten. Download it for safekeeping, restore a valid backup, or explicitly start fresh.')}<div class="actions">${button('Download damaged data','damaged')}${button('Start fresh','reset')}</div>${backupControls()}</section>`:view==='bests'?bestBoard(state,button):view==='best-detail'?bestDetail(state,bestTable,button):view==='learn'?audioUI.html():view==='progress'?progress():view==='practice'?practice():view==='results'?results():view==='choose'?choose():view==='challenge'?challengeUI().choose():view==='companions'?companionScreen(state,companionCatalog,companionCatalogError,companionTab,button,heading,{masteredFactCount:masteredCount()}):home();
  if(['home','progress'].includes(view))$('#main').insertAdjacentHTML('beforeend',`<section class="lock-controls">${button('Lock app','lock')}<p class="small muted">Keeps your progress, theme and saved audio.</p></section>`);
  if(focus) {const el=view==='practice'?($('[data-action="next"]')??$('#answer')):$('#main');el?.focus({preventScroll:true});}
  audioUI.update();syncClock();scheduleSuccess();scheduleCountdown();
@@ -155,8 +181,19 @@ function act(action) {
  if(action.startsWith('audio:')){if(view==='learn')audioUI.act(action);return;}
  if(view==='learn'&&action!=='learn')audioUI.player.stop();
  if(action==='learn'){if(view==='practice'){suspended=true;pauseChallenge();}view='learn';render(true);void audioUI.refreshOffline();return;}
- if(['home','progress','choose','challenge'].includes(action)&&view==='practice'){suspended=true;pauseChallenge();}
+ if(['home','progress','choose','challenge','companions'].includes(action)&&view==='practice'){suspended=true;pauseChallenge();}
  if(action==='bests'){view='bests';render(true);return;}
+ if(action==='companions'){view='companions';companionTab='creatures';render(true);void loadCompanions();return;}
+ if(action.startsWith('companion-tab:')){companionTab=action.slice(14);render();return;}
+ if(action==='companion-noop')return;
+ if(action.startsWith('companion-select:')){const [,slot,rawId]=action.split(':');const companionId=rawId==='none'?null:rawId;if(selectCompanion(state.rewards,slot,companionId)){save();render();}return;}
+ if(action.startsWith('companion-claim:')){
+  const [,slot,companionId]=action.split(':');let changed=false;
+  if(slot==='creature')changed=claimCreature(state.rewards,companionId);
+  else {const available=(companionCatalog?.[ITEM_CATEGORIES[slot]?.key]??[]).map(e=>e.id);changed=claimItem(state.rewards,slot,companionId,available);}
+  if(changed){save();render();}
+  return;
+ }
  if(action.startsWith('best-table:')){const table=Number(action.split(':')[1]);if(!ALL.includes(table))return;bestTable=table;view='best-detail';render(true);return;}
  if(action==='challenge'){challengeTable=state.guided.tables.at(-1);view='challenge';render(true);return;}
  if(action.startsWith('challenge-table:')){challengeTable=Number(action.split(':')[1]);render();$(`[data-action="${action}"]`)?.focus({preventScroll:true});return;}
@@ -208,3 +245,5 @@ document.addEventListener('keydown',e=>{
  else if(e.target.tagName!=='INPUT'&&e.target.tagName!=='BUTTON'&&/^\d$/.test(e.key)){e.preventDefault();input(state.round.input+e.key);}
 });
 render();
+
+void loadCompanions();

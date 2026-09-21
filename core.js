@@ -1,3 +1,4 @@
+import {createRewards} from './rewards.js';
 export const INTRODUCTION = [3,4,6,7,8,9,11,12];
 export const ALL = Array.from({length:12},(_,i)=>i+1);
 export function localDay(date=new Date()) {
@@ -80,5 +81,5 @@ export function finishRound(state) {
   state.results.push(result);return result;
 }
 export function createState() {
-  return {version:2, challenge:{best:{},results:[]}, facts:Object.fromEntries(ALL.flatMap(a=>ALL.map(b=>[`${a}x${b}`,{history:[]}]))), guided:{tables:[1,2,5,10],streak:0}, selection:[1,2,5,10], mode:'guided', round:null, results:[]};
+  return {version:3, challenge:{best:{},results:[]}, rewards:createRewards(), facts:Object.fromEntries(ALL.flatMap(a=>ALL.map(b=>[`${a}x${b}`,{history:[]}]))), guided:{tables:[1,2,5,10],streak:0}, selection:[1,2,5,10], mode:'guided', round:null, results:[]};
 }

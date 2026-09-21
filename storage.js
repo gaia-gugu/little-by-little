@@ -1,5 +1,6 @@
-import {ALL, INTRODUCTION, product} from './core.js';
+import {ALL, INTRODUCTION, product, mastery} from './core.js';
 import {validateChallenges} from './challenge-storage.js';
+import {deriveRewards, validateRewards} from './rewards.js';
 export const STORAGE_KEY='little-by-little-v1';
 const fail=()=>{throw new Error('This file is not a valid Little by Little backup. Nothing was changed.');};
 const check=condition=>{if(!condition)fail();};
@@ -24,9 +25,11 @@ export function openStore(disk) {
 export function parseBackup(text) {
   check(typeof text==='string'&&text.length<=10_000_000);
   let s;try{s=JSON.parse(text,(key,value)=>{if(['__proto__','constructor','prototype'].includes(key))fail();return value;});}catch{fail();}
-  check(s&&[1,2].includes(s.version));
-  shape(s,['version','facts','guided','selection','mode','round','results',...(s.version===2?['challenge']:[])]);
+  check(s&&[1,2,3].includes(s.version));
+  shape(s,['version','facts','guided','selection','mode','round','results',...(s.version>=2?['challenge']:[]),...(s.version>=3?['rewards']:[])]);
+  const legacyRewards=s.version<3;
   if(s.version===1){s.version=2;s.challenge={best:{},results:[]};}
+  if(s.version===2){s.version=3;s.rewards=null;}
   check(tables(s.selection)&&mode(s.mode));shape(s.guided,['tables','streak']);check(guided(s.guided.tables)&&integer(s.guided.streak,0,2));
   shape(s.facts,factKeys);
   const events=new Map();
@@ -47,6 +50,8 @@ export function parseBackup(text) {
     check(r.added===null||INTRODUCTION.includes(r.added));check(!r.qualified||(r.mode==='guided'&&r.score>=8));check(r.added===null||r.qualified);
   }
   validateChallenges(s,events,{check,shape,integer,bool,id,date});
+  if(legacyRewards) s.rewards=deriveRewards(s,Object.values(s.facts).filter(f=>mastery(f).status==='mastered').length);
+  validateRewards(s.rewards,{check,shape,integer,date});
   if(s.round!==null&&s.round.mode!=='challenge') {
     const r=s.round;shape(r,['id','day','mode','tables','newest','queue','index','input','phase','feedback']);
     check(id(r.id)&&date(r.day)&&mode(r.mode)&&tables(r.tables)&&integer(r.index,0,9));
