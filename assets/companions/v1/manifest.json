@@ -52,7 +52,7 @@
     },
     {
       "id": "forestcreature",
-      "label": "Forest Creature",
+      "label": "Sprout",
       "src": "assets/companions/v1/creatures/forestcreature.webp",
       "badge": {
         "x": 50.02,

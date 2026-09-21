@@ -2,19 +2,19 @@ import {CREATURES, ITEM_CATEGORIES, unspentCreatureEntitlements, unspentItemEnti
 const CATALOG_ERROR = 'Companion art is not ready yet. Please try again soon.';
 const TABS = [['creatures', 'Creatures'], ['badge', 'Badges'], ['decoration', 'Decor'], ['background', 'Backgrounds']];
 const entry = (catalog, group, id) => catalog?.[group]?.find(e => e.id === id);
-function scene(catalog, rewards, cls, showMessage = true) {
+export function scene(catalog, rewards, cls, showMessage = true, compact = false) {
   const creature = entry(catalog, 'creatures', rewards.selected.creature);
   if (!creature) return `<div class="${cls} companion-scene-empty">${showMessage ? `<p class="small muted">${CATALOG_ERROR}</p>` : ''}</div>`;
-  const background = entry(catalog, 'backgrounds', rewards.selected.background);
-  const decoration = entry(catalog, 'decorations', rewards.selected.decoration);
+  const background = compact ? null : entry(catalog, 'backgrounds', rewards.selected.background);
+  const decoration = compact ? null : entry(catalog, 'decorations', rewards.selected.decoration);
   const badge = rewards.selected.badge ? entry(catalog, 'badges', rewards.selected.badge) : null;
-  return `<div class="${cls}${decoration ? ' has-decoration' : ''}"${background ? ` style="background-image:url('${background.src}')"` : ''}>${decoration ? `<img class="scene-decoration" src="${decoration.src}" alt="">` : ''}<div class="scene-companion"><img class="scene-creature" src="${creature.src}" alt="${creature.label}">${badge && creature.badge ? `<img class="scene-badge" style="left:${creature.badge.x}%;top:${creature.badge.y}%;width:${creature.badge.width}%" src="${badge.src}" alt="">` : ''}</div></div>`;
+  return `<div class="${cls}${decoration ? ' has-decoration' : ''}"${background ? ` style="background-image:url('${background.src}')"` : ''}>${decoration ? `<img class="scene-decoration" src="${decoration.src}" alt="${decoration.label}">` : ''}<div class="scene-companion"><img class="scene-creature" src="${creature.src}" alt="${creature.label}">${badge && creature.badge ? `<img class="scene-badge" style="left:${creature.badge.x}%;top:${creature.badge.y}%;width:${creature.badge.width}%" src="${badge.src}" alt="${badge.label} badge">` : ''}</div></div>`;
 }
 export function companionHomeStatus(state, catalog, button) {
   const r = state.rewards;
   const unspent = unspentCreatureEntitlements(r) + unspentItemEntitlements(r);
   const art = entry(catalog, 'creatures', r.selected.creature);
-  return `<section class="companion-status"><h2>Your companion</h2>${scene(catalog, r, 'companion-scene-small', false)}<p>${art?.label ?? r.selected.creature}</p>${unspent > 0 ? `<p class="companion-ready" role="status">${unspent} new reward${unspent === 1 ? '' : 's'} ready to claim!</p>` : ''}${button('My creatures', 'companions', 'text-button')}</section>`;
+  return `<section class="companion-status"><h2 class="sr-only">Your companion</h2>${scene(catalog, r, 'companion-scene-large home-world', false)}<p>${art?.label ?? r.selected.creature}</p>${unspent > 0 ? `<p class="companion-ready" role="status">${unspent} new reward${unspent === 1 ? '' : 's'} ready to claim!</p>` : ''}${button('My creatures', 'companions', 'text-button')}</section>`;
 }
 function card(id, name, ariaName, art, owned, selected, unspent, selectAction, claimAction, button) {
   let action, actionLabel, disabled = '';
@@ -74,5 +74,5 @@ export function companionScreen(state, catalog, catalogError, tab, button, headi
   const creatureClaimable = unclaimedOfferedIds(CREATURES, catalog?.creatures, r.owned.creatures).length;
   const itemClaimable = Object.entries(ITEM_CATEGORIES).reduce((n, [, {key, list}]) => n + unclaimedOfferedIds(list, catalog?.[key], r.owned[key]).length, 0);
   const progress = progressText(r, masteredFactCount, creatureClaimable, itemClaimable);
-  return `<section class="companions-page">${button('← Home', 'home', 'text-button')}${heading('YOUR COMPANIONS', 'My creatures', 'A friendly companion for your practice space.')}${scene(catalog, r, 'companion-scene-large')}${catalogError ? `<p class="companion-notice" role="status">${catalogError}</p>` : ''}<p class="small muted" role="status">${progress}</p>${tabs}${grid}</section>`;
+  return `<section class="companions-page">${button('← Home', 'home', 'text-button')}${heading('YOUR COMPANIONS', 'My creatures', 'A friendly companion for your practice space.')}${scene(catalog, r, 'companion-scene-large')}${catalogError ? `<p class="companion-notice" role="status">${catalogError}</p>` : ''}<details class="how-it-works"><summary>How rewards work</summary><p class="small muted">${progress}</p></details>${tabs}${grid}</section>`;
 }
