@@ -7,8 +7,19 @@ import {bestBoard,bestDetail} from './challenge-dashboard.js';
 import {ITEM_CATEGORIES,claimCreature,claimItem,selectCompanion,syncRewards,mergeLegacyRewards,creditCompletionDay} from './rewards.js';
 import {loadCatalog} from './companion-catalog.js';
 import {companionHomeStatus,companionScreen,scene} from './companion-ui.js';
+import {createCompanionMotion} from './companion-motion.js';
+const motion=createCompanionMotion();
+let pageActive=true;
+const syncMotion=()=>motion.sync(view,!blocked&&!document.hidden&&pageActive&&motionEnabled&&!reduceMotion.matches);
 const $=s=>document.querySelector(s);
 let disk;try{disk=localStorage;}catch{disk={getItem(){throw Error();},setItem(){throw Error();}};}
+const MOTION_KEY='little-by-little-companion-motion-v1';
+let motionEnabled=true,motionNotice='';
+try{motionEnabled=disk.getItem(MOTION_KEY)!=='off';}catch{}
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
+function motionStatus(){return (reduceMotion.matches?'Your system Reduce Motion setting keeps companion animations off.':motionEnabled?'Gentle movement on Home and My creatures, and one hop for a correct answer.':'Companion animations are off.')+(motionNotice?' '+motionNotice:'');}
+function motionSettings(){return `<section class="motion-settings"><h2>Companion animations</h2>${button(motionEnabled?'On':'Off','motion-toggle','secondary',`aria-label="Companion animations" aria-pressed="${motionEnabled}" aria-describedby="motion-status"`)}<p id="motion-status" class="small muted">${motionStatus()}</p></section>`;}
+reduceMotion.addEventListener('change',()=>{syncMotion();const status=$('#motion-status');if(status)status.textContent=motionStatus();});
 const THEME_KEY='little-by-little-theme-v1';
 const THEMES={mint:'Mint',ocean:'Ocean Blue',lavender:'Lavender',peach:'Peach'};
 let theme='mint',themeNotice='';
@@ -34,7 +45,7 @@ function refreshCompanionUI() {
 async function loadCompanions() {
  const result=await loadCatalog(window.fetch.bind(window));
  companionCatalog=result.ok?result.catalog:null;companionCatalogError=result.ok?'':result.error;
- refreshCompanionUI();
+ refreshCompanionUI();syncMotion();
 }
 const clock=createClock();
 const clockVisible=()=>!blocked&&!document.hidden&&!suspended&&view==='practice';
@@ -59,7 +70,7 @@ function companionPresence(question=false) {
  const art=scene(companionCatalog,state.rewards,question?'question-companion':'companion-avatar',false,true);
  return question?art:`<div class="companion-presence">${button(art+'<span>My creatures</span>','companions','companion-link','aria-label="My creatures"')}</div>`;
 }
-function settings() {return `<section class="settings maintenance">${heading('MAKE IT YOURS','Settings','Your space, your pace.')}${themePicker()}${button('Save audio offline · Listen','learn')}${backupControls()}<details><summary>How it works</summary><p>Ten practice questions, with a retry when you need it. Correct answers move on after a moment; revealed answers wait for you. First tries build your score. Mastery grows over three different days, not all at once.</p><p>Companions and items are earned through learning and completed practice days. Choose your rewards in My creatures. There is no need to hurry.</p></details><section class="lock-controls">${button('Lock app','lock')}<p class="small muted">Keeps your progress, theme and saved audio.</p></section></section>`;}
+function settings() {return `<section class="settings maintenance">${heading('MAKE IT YOURS','Settings','Your space, your pace.')}${themePicker()}${motionSettings()}${button('Save audio offline · Listen','learn')}${backupControls()}<details><summary>How it works</summary><p>Ten practice questions, with a retry when you need it. Correct answers move on after a moment; revealed answers wait for you. First tries build your score. Mastery grows over three different days, not all at once.</p><p>Companions and items are earned through learning and completed practice days. Choose your rewards in My creatures. There is no need to hurry.</p></details><section class="lock-controls">${button('Lock app','lock')}<p class="small muted">Keeps your progress, theme and saved audio.</p></section></section>`;}
 function home() {
  const active=state.round&&state.round.phase!=='results';
  return `<section class="companion-home">${heading('YOUR LITTLE WORLD','Ready when you are.')}${companionHomeStatus(state,companionCatalog,button)}<div class="start-block">${button(active?(state.round.mode==='challenge'?'Resume challenge':'Resume practice'):'Start practice','start','primary large')}<span class="muted">No clock. No rush.</span></div><div class="home-secondary">${button('Challenge','challenge','secondary','aria-label="Time challenge"')}${button('Listen','learn','secondary','aria-label="Learn tables (Cantonese)"')}</div><div class="home-tools">${button('Choose tables','choose','text-button')}${button('Progress','progress','text-button')}</div>${progressBar()}</section>`;
@@ -177,13 +188,14 @@ function discloseHelp() {
  $('#main > section').append(details);
 }
 function render(focus=false) {
+ motion.cancel();
  renderNavigation();
  $('#main').innerHTML=blocked?`<section class="recovery">${heading('SAVED DATA PROBLEM','Your saved progress needs attention.','We could not read the saved data. It has not been erased or overwritten. Download it for safekeeping, restore a valid backup, or explicitly start fresh.')}<div class="actions">${button('Download damaged data','damaged')}${button('Start fresh','reset')}</div>${backupControls()}</section>`:view==='settings'?settings():view==='bests'?bestBoard(state,button):view==='best-detail'?bestDetail(state,bestTable,button):view==='learn'?audioUI.html():view==='progress'?progress():view==='practice'?practice():view==='results'?results():view==='choose'?choose():view==='challenge'?challengeUI().choose():view==='companions'?companionScreen(state,companionCatalog,companionCatalogError,companionTab,button,heading,{masteredFactCount:masteredCount()}):home();
  discloseHelp();
  if(!blocked&&!['home','practice','companions'].includes(view))$('#main').insertAdjacentHTML('afterbegin',companionPresence());
  if(!blocked&&view==='practice'&&state.round?.phase==='countdown')$('#main').insertAdjacentHTML('afterbegin',companionPresence(true));
  if(focus) {window.scrollTo(0,0);const el=view==='practice'?($('[data-action="next"]')??$('#answer')):$('#main');el?.focus({preventScroll:true});}
- audioUI.update();syncClock();scheduleSuccess();scheduleCountdown();
+ audioUI.update();syncClock();scheduleSuccess();scheduleCountdown();syncMotion();
 }
 function input(value) {
  if(view!=='practice'||!['answer','retry'].includes(state.round.phase))return;
@@ -192,7 +204,7 @@ function input(value) {
 }
 function act(action) {
  if(action==='lock'&&['home','progress','settings'].includes(view)){
-  suspended=true;audioUI.player.stop();pauseChallenge();clearTimeout(successTimer);clearTimeout(countdownTimer);
+  pageActive=false;motion.cancel();suspended=true;audioUI.player.stop();pauseChallenge();clearTimeout(successTimer);clearTimeout(countdownTimer);
   try{disk.removeItem('little-by-little-gate:'+new URL('./',import.meta.url).pathname);}catch{}
   const url=new URL(location.href);url.searchParams.set('locked','1');location.replace(url.href);return;
  }
@@ -203,6 +215,7 @@ function act(action) {
  if(view==='learn'&&action!=='learn')audioUI.player.stop();
  if(action==='learn'){if(view==='practice'){suspended=true;pauseChallenge();}view='learn';render(true);void audioUI.refreshOffline();return;}
  if(['home','progress','choose','challenge','companions','settings'].includes(action)&&view==='practice'){suspended=true;pauseChallenge();}
+ if(action==='motion-toggle'){motionEnabled=!motionEnabled;motionNotice='';try{disk.setItem(MOTION_KEY,motionEnabled?'on':'off');}catch{motionNotice='This choice could not be saved; it lasts until this page closes.';}render();return;}
  if(action==='settings'){view='settings';render(true);return;}
  if(action==='bests'){view='bests';render(true);return;}
  if(action==='companions'){view='companions';companionTab='creatures';render(true);void loadCompanions();return;}
@@ -243,15 +256,15 @@ function act(action) {
  else if(action==='home'){view='home';render(true);}
  else if(action.startsWith('digit:'))input(state.round.input+action.split(':')[1]);
  else if(action==='delete')input(state.round.input.slice(0,-1));
- else if(action==='check'){if((state.round?.mode==='challenge'?submitChallenge(state):submit(state))){save();render(true);}}
+ else if(action==='check'&&view==='practice'){if((state.round?.mode==='challenge'?submitChallenge(state):submit(state))){save();render(true);if(state.round.phase==='feedback'&&state.round.feedback==='correct')motion.hop();}}
  else if(action==='next'&&view==='practice'&&state.round.phase==='feedback'&&state.round.feedback==='reveal')advance();
 }
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden){audioUI.player.pause();suspended=true;pauseChallenge();}else{suspended=false;syncClock();}
- scheduleSuccess();scheduleCountdown();
+ scheduleSuccess();scheduleCountdown();syncMotion();
 });
- window.addEventListener('pagehide',()=>{audioUI.player.stop();suspended=true;pauseChallenge();clearTimeout(successTimer);clearTimeout(countdownTimer);});
- window.addEventListener('pageshow',()=>{suspended=false;syncClock();scheduleSuccess();scheduleCountdown();});
+ window.addEventListener('pagehide',()=>{pageActive=false;motion.cancel();audioUI.player.stop();suspended=true;pauseChallenge();clearTimeout(successTimer);clearTimeout(countdownTimer);});
+ window.addEventListener('pageshow',()=>{pageActive=true;suspended=false;syncClock();scheduleSuccess();scheduleCountdown();syncMotion();});
  let clockTicks=0;
  setInterval(()=>{if(state.round?.mode!=='challenge'||!clockVisible())return;syncClock();const el=$('#challenge-clock');if(el)el.textContent=seconds(state.round.elapsedMs);if(++clockTicks%4===0)save();},250);
 document.addEventListener('click',e=>{
