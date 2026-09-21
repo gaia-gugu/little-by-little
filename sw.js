@@ -1,7 +1,7 @@
 // Bump this version whenever any app-shell asset changes.
 const PREFIX='little-by-little:'+self.registration.scope+':';
 const GATE_GENERATION='bea6716061615ebff1c238dcdebfc7a3';
-const CACHE=PREFIX+'v16:'+GATE_GENERATION;
+const CACHE=PREFIX+'v17:'+GATE_GENERATION;
 const AUDIO_CACHE=PREFIX+'audio-v2';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./bootstrap.js','./gate.js','./gate-config.js','./core.js','./storage.js','./challenge.js','./challenge-ui.js','./challenge-storage.js','./challenge-dashboard.js','./audio-player.js','./audio-timings.js','./audio-ui.js','./audio-offline.js','./rewards.js','./companion-catalog.js','./companion-ui.js','./companion-motion.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
 const COMPANIONS_SCOPE=new URL('./assets/companions/v1/',self.registration.scope).href;

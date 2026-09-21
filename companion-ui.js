@@ -67,6 +67,15 @@ function progressText(rewards, masteredFactCount, creatureClaimable, itemClaimab
   parts.push(`${days} more day${days === 1 ? '' : 's'} of practice unlocks your next item reward.`);
   return parts.join(' ');
 }
+const REWARDS_FAQ = `<section class="rewards-faq" aria-labelledby="rewards-faq-heading">
+<h2 id="rewards-faq-heading">Questions about rewards</h2>
+<details><summary>How do I get more creatures?</summary><p>Dragon and Moon Bunny are free. Earn a new creature choice at 12, 36, 72 and 120 mastered multiplication facts, across any tables. Pick Griffin, Sea Dragon, Unicorn or Sprout in any order.</p></details>
+<details><summary>What does “mastered” mean?</summary><p>A fact is one multiplication, like 3 × 4 = 12. Get it right on your first try on three different days to master it. The days do not need to be in a row. Retries and repeat questions do not count. A mistake starts a new sequence, but rewards you already earned stay yours.</p></details>
+<details><summary>How do I earn badges, decor and backgrounds?</summary><p>Finish a Practice round or Challenge, with any score. You get one practice-day credit per local calendar day, even if you finish lots of rounds. Listening does not count.</p><p>Earn an item choice on credited days 1, 4, 7, 10 and so on. These days add up: no streak needed! Each choice buys ONE badge OR decoration OR background, not all three.</p></details>
+<details><summary>What is the difference between Claim and Choose?</summary><p>Tap <strong>Claim</strong> to spend one earned choice and keep that reward. Then tap <strong>Choose</strong> to put it in your scene. <strong>Selected</strong> means you are using it now. You cannot claim the same reward twice.</p></details>
+<details><summary>Can I save my choices for later?</summary><p>Yes! Earned choices do not expire, and claimed rewards stay yours even if your mastery goes down. You can choose later.</p><p>Rewards work offline and save in this browser on this device. Clearing its data can erase them. Ask a grown-up to use <strong>Export backup</strong> in Settings to keep a safe copy.</p></details>
+<details><summary>What can I put in my scene?</summary><p>Choose one creature, with up to one badge, one decoration and one background. Badges and decor are optional. The plain background is free. Pick <strong>None</strong> to remove an item or use the plain background.</p></details>
+</section>`;
 export function companionScreen(state, catalog, catalogError, tab, button, heading, {masteredFactCount} = {}) {
   const r = state.rewards;
   const tabs = `<div class="companion-tabs" role="tablist" aria-label="Companion collection">${TABS.map(([key, label]) => button(label, `companion-tab:${key}`, key === tab ? 'companion-tab selected' : 'companion-tab', `role="tab" aria-selected="${key === tab}"`)).join('')}</div>`;
@@ -74,5 +83,5 @@ export function companionScreen(state, catalog, catalogError, tab, button, headi
   const creatureClaimable = unclaimedOfferedIds(CREATURES, catalog?.creatures, r.owned.creatures).length;
   const itemClaimable = Object.entries(ITEM_CATEGORIES).reduce((n, [, {key, list}]) => n + unclaimedOfferedIds(list, catalog?.[key], r.owned[key]).length, 0);
   const progress = progressText(r, masteredFactCount, creatureClaimable, itemClaimable);
-  return `<section class="companions-page">${button('← Home', 'home', 'text-button')}${heading('YOUR COMPANIONS', 'My creatures', 'A friendly companion for your practice space.')}${scene(catalog, r, 'companion-scene-large')}${catalogError ? `<p class="companion-notice" role="status">${catalogError}</p>` : ''}<details class="how-it-works"><summary>How rewards work</summary><p class="small muted">${progress}</p></details>${tabs}${grid}</section>`;
+  return `<section class="companions-page">${button('← Home', 'home', 'text-button')}${heading('YOUR COMPANIONS', 'My creatures', 'A friendly companion for your practice space.')}${scene(catalog, r, 'companion-scene-large')}${catalogError ? `<p class="companion-notice" role="status">${catalogError}</p>` : ''}<details class="how-it-works"><summary>How rewards work</summary><p class="small muted">${progress}</p></details>${tabs}${grid}${REWARDS_FAQ}</section>`;
 }
