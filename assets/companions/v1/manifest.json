@@ -97,32 +97,38 @@
     {
       "id": "starrysky",
       "label": "Starry Sky",
-      "src": "assets/companions/v1/backgrounds/starrysky.webp"
+      "src": "assets/companions/v1/backgrounds/starrysky.webp",
+      "groundY": 91
     },
     {
       "id": "cloudgarden",
       "label": "Cloud Garden",
-      "src": "assets/companions/v1/backgrounds/cloudgarden.webp"
+      "src": "assets/companions/v1/backgrounds/cloudgarden.webp",
+      "groundY": 90
     },
     {
       "id": "mushroommeadow",
       "label": "Mushroom Meadow",
-      "src": "assets/companions/v1/backgrounds/mushroommeadow.webp"
+      "src": "assets/companions/v1/backgrounds/mushroommeadow.webp",
+      "groundY": 84
     },
     {
       "id": "moonlitlake",
       "label": "Moonlit Lake",
-      "src": "assets/companions/v1/backgrounds/moonlitlake.webp"
+      "src": "assets/companions/v1/backgrounds/moonlitlake.webp",
+      "groundY": 88
     },
     {
       "id": "cosylibrary",
       "label": "Cosy Library",
-      "src": "assets/companions/v1/backgrounds/cosylibrary.webp"
+      "src": "assets/companions/v1/backgrounds/cosylibrary.webp",
+      "groundY": 90
     },
     {
       "id": "candyhills",
       "label": "Candy Hills",
-      "src": "assets/companions/v1/backgrounds/candyhills.webp"
+      "src": "assets/companions/v1/backgrounds/candyhills.webp",
+      "groundY": 85
     }
   ],
   "decorations": [

@@ -8,7 +8,7 @@ export function scene(catalog, rewards, cls, showMessage = true, compact = false
   const background = compact ? null : entry(catalog, 'backgrounds', rewards.selected.background);
   const decoration = compact ? null : entry(catalog, 'decorations', rewards.selected.decoration);
   const badge = rewards.selected.badge ? entry(catalog, 'badges', rewards.selected.badge) : null;
-  return `<div class="${cls}${decoration ? ' has-decoration' : ''}"${background ? ` style="background-image:url('${background.src}')"` : ''}>${decoration ? `<img class="scene-decoration" src="${decoration.src}" alt="${decoration.label}">` : ''}<div class="scene-companion"><img class="scene-creature" src="${creature.src}" alt="${creature.label}">${badge && creature.badge ? `<img class="scene-badge" style="left:${creature.badge.x}%;top:${creature.badge.y}%;width:${creature.badge.width}%" src="${badge.src}" alt="${badge.label} badge">` : ''}</div></div>`;
+  return `<div class="${cls}${decoration ? ' has-decoration' : ''}"${background ? ` style="background-image:url('${background.src}');--ground-inset:${100 - (background.groundY ?? 86)}cqw"` : ''}>${decoration ? `<img class="scene-decoration" src="${decoration.src}" alt="${decoration.label}">` : ''}<div class="scene-companion"><img class="scene-creature" src="${creature.src}" alt="${creature.label}">${badge && creature.badge ? `<img class="scene-badge" style="left:${creature.badge.x}%;top:${creature.badge.y}%;width:${creature.badge.width}%" src="${badge.src}" alt="${badge.label} badge">` : ''}</div></div>`;
 }
 export function companionHomeStatus(state, catalog, button) {
   const r = state.rewards;
