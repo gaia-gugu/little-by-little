@@ -48,7 +48,8 @@ async function loadCompanions() {
  refreshCompanionUI();syncMotion();
 }
 const clock=createClock();
-const clockVisible=()=>!blocked&&!document.hidden&&!suspended&&view==='practice';
+let confirming=null;
+const clockVisible=()=>!blocked&&!document.hidden&&!suspended&&view==='practice'&&!confirming;
 function syncClock(){clock.sync(state.round,clockVisible());}
 function pauseChallenge(){if(state.round?.mode!=='challenge'||state.round.phase==='results')return;clock.sync(state.round,false);interruptChallenge(state);save();}
 const challengeUI=()=>challengeViews(state,button,heading,challengeTable);
@@ -100,10 +101,19 @@ function progress() {
  return `<section class="progress-page">${button('← Home','home','text-button')}${heading('YOUR PROGRESS','See your remembering grow.','Each square is one fact. Tap to see its story.')}${progressBar()}<details class="how-it-works"><summary>How mastery works</summary><p class="small muted">A fact is mastered after correct first tries on 3 different local calendar days. There is no minimum time span. A mistake starts a new sequence. Retries and repeats don’t count toward mastery.</p></details><div class="legend">${Object.entries(statuses).map(([k,[symbol,label]])=>`<span><b class="${k}">${symbol}</b> ${label}</span>`).join('')}</div><p class="small muted">Scroll the grid sideways on a small screen. Rows are tables; columns are multipliers. 2 × 3 and 3 × 2 are tracked separately.</p><div class="grid-scroll" tabindex="0" role="region" aria-label="Multiplication fact progress, horizontally scrollable"><table class="fact-grid"><caption class="sr-only">All 144 multiplication facts</caption><thead><tr><th scope="col">×</th>${ALL.map(t=>`<th scope="col">${t}</th>`).join('')}</tr></thead><tbody>${ALL.map(a=>`<tr><th scope="row">${a}</th>${ALL.map(b=>{const key=`${a}x${b}`,status=mastery(state.facts[key]).status;return `<td>${button(statuses[status][0],`fact:${key}`,`fact ${status}`,`data-fact="${key}" aria-label="${a} times ${b}: ${statuses[status][1]}"`)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div><section class="trouble"><h2>A little extra attention</h2>${trouble.length?`<div class="trouble-list">${trouble.map(([key])=>button(equation(key),`fact:${key}`)).join('')}</div>`:'<p class="muted">No tricky facts yet. When one needs practice, you’ll find it here.</p>'}</section><section class="recent-rounds"><h2>Recent rounds</h2><p class="small muted">Latest 10 rounds. First-try scores only; all history stays in your backup.</p><ol class="history-list">${state.results.slice(-10).reverse().map(r=>`<li><time>${r.day}</time><strong>${r.score} / 10</strong> · ${r.mode==='guided'?'Guided':'Chosen tables'}${r.added?` · Unlocked ${r.added}`:''}</li>`).join('')||'<li>No rounds completed yet.</li>'}</ol></section>${challengeHistory(state)}</section>`;
 }
 let pendingRestore=null,dialogOpener=null;
-function closeDialog() {const d=$('dialog');d?.close();d?.remove();pendingRestore=null;dialogOpener?.focus({preventScroll:true});}
+function closeDialog() {const d=$('dialog');d?.close();d?.remove();pendingRestore=null;confirming=null;dialogOpener?.focus({preventScroll:true});syncClock();}
 function dialog(content) {
  dialogOpener=document.activeElement;
  const d=document.createElement('dialog');d.setAttribute('aria-labelledby','dialog-title');d.innerHTML=content;document.body.append(d);d.addEventListener('cancel',e=>{e.preventDefault();closeDialog();});d.showModal();
+}
+function confirmAnswer() {
+ const r=state.round;
+ if(confirming||view!=='practice'||!r||!['answer','retry'].includes(r.phase)||!r.input)return;
+ syncClock();confirming={id:r.id,index:r.index,phase:r.phase,input:r.input};
+ dialog(`<p class="eyebrow">ONE MORE LOOK</p><h2 id="dialog-title">Check this answer?</h2><p class="confirmation-question">${r.queue[r.index].fact.replace('x',' × ')} = ?</p><p>Your answer: <strong class="confirmation-value">${r.input}</strong></p><div class="actions">${button('Edit answer','check-edit')}${button('Yes','check-yes','primary')}</div>`);
+ $('dialog').classList.add('answer-confirm');
+ $('[data-action="check-edit"]').focus({preventScroll:true});
+ save();
 }
 function referenceTable(table) {
  const d=$('dialog.table-reference');if(!d||!ALL.includes(table))return;
@@ -203,6 +213,15 @@ function input(value) {
  $('[data-action="check"]').disabled=!state.round.input;save();
 }
 function act(action) {
+ if(confirming){
+  if(action==='check-edit'||action==='close'){closeDialog();if(action==='check-edit')$('#answer')?.focus({preventScroll:true});return;}
+  if(action==='check-yes'){
+   const r=state.round,valid=view==='practice'&&r?.id===confirming.id&&r.index===confirming.index&&r.phase===confirming.phase&&r.input===confirming.input;
+   closeDialog();if(valid&&(r.mode==='challenge'?submitChallenge(state):submit(state))){save();render(true);if(r.phase==='feedback'&&r.feedback==='correct')motion.hop();}
+   return;
+  }
+  return;
+ }
  if(action==='lock'&&['home','progress','settings'].includes(view)){
   pageActive=false;motion.cancel();suspended=true;audioUI.player.stop();pauseChallenge();clearTimeout(successTimer);clearTimeout(countdownTimer);
   try{disk.removeItem('little-by-little-gate:'+new URL('./',import.meta.url).pathname);}catch{}
@@ -256,14 +275,14 @@ function act(action) {
  else if(action==='home'){view='home';render(true);}
  else if(action.startsWith('digit:'))input(state.round.input+action.split(':')[1]);
  else if(action==='delete')input(state.round.input.slice(0,-1));
- else if(action==='check'&&view==='practice'){if((state.round?.mode==='challenge'?submitChallenge(state):submit(state))){save();render(true);if(state.round.phase==='feedback'&&state.round.feedback==='correct')motion.hop();}}
+ else if(action==='check'&&view==='practice')confirmAnswer();
  else if(action==='next'&&view==='practice'&&state.round.phase==='feedback'&&state.round.feedback==='reveal')advance();
 }
 document.addEventListener('visibilitychange',()=>{
- if(document.hidden){audioUI.player.pause();suspended=true;pauseChallenge();}else{suspended=false;syncClock();}
+ if(document.hidden){audioUI.player.pause();suspended=true;if(confirming)closeDialog();pauseChallenge();}else{suspended=false;syncClock();}
  scheduleSuccess();scheduleCountdown();syncMotion();
 });
- window.addEventListener('pagehide',()=>{pageActive=false;motion.cancel();audioUI.player.stop();suspended=true;pauseChallenge();clearTimeout(successTimer);clearTimeout(countdownTimer);});
+ window.addEventListener('pagehide',()=>{pageActive=false;motion.cancel();audioUI.player.stop();suspended=true;if(confirming)closeDialog();pauseChallenge();clearTimeout(successTimer);clearTimeout(countdownTimer);});
  window.addEventListener('pageshow',()=>{pageActive=true;suspended=false;syncClock();scheduleSuccess();scheduleCountdown();syncMotion();});
  let clockTicks=0;
  setInterval(()=>{if(state.round?.mode!=='challenge'||!clockVisible())return;syncClock();const el=$('#challenge-clock');if(el)el.textContent=seconds(state.round.elapsedMs);if(++clockTicks%4===0)save();},250);
@@ -275,6 +294,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{if(e.target.id==='answer')input(e.target.value);});
 document.addEventListener('change',e=>{if(e.target.id==='restore-file')restore(e.target.files[0]);if(e.target.id==='reference-table')referenceTable(Number(e.target.value));});
 document.addEventListener('keydown',e=>{
+ if(confirming&&e.key==='Enter'){e.preventDefault();return;}
  if(view!=='practice'||e.ctrlKey||e.metaKey||e.altKey)return;
  if(e.key==='Enter'&&e.target.id==='answer'){e.preventDefault();act(state.round.phase==='feedback'?'next':'check');}
  else if(e.target.tagName!=='INPUT'&&e.target.tagName!=='BUTTON'&&/^\d$/.test(e.key)){e.preventDefault();input(state.round.input+e.key);}
